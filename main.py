@@ -10,7 +10,7 @@ from websockets.asyncio.client import connect
 
 from configs.TwoCryptoNG import filters as two_crypto_ng_filters
 from configs.UniswapV2 import filters as uni_v2_filters
-from configs.UniswapV3 import filters as uni_v3_filters
+# from configs.UniswapV3 import filters as uni_v3_filters
 from configs.UniswapV4 import filters as uni_v4_filters
 from utils.cex_trades_handler import BuyTrade, handle_cex_trades
 from utils.discord_bot import send_message_to_channel
@@ -38,7 +38,7 @@ async def onchain_subs():
         print("[green]Monitoring onchain events...")
         subs_tasks = []
         filters = (
-            two_crypto_ng_filters + uni_v2_filters + uni_v3_filters + uni_v4_filters
+            two_crypto_ng_filters + uni_v2_filters + uni_v4_filters
         )
         # Subscribe to log filters as defined in configs files
         for f in filters:

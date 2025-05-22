@@ -5,7 +5,7 @@ from rich import print
 from rich.traceback import install
 from web3 import Web3
 
-from configs import TwoCryptoNG, UniswapV2, UniswapV4
+from configs import TwoCryptoNG, UniswapV2, UniswapV3, UniswapV4
 
 
 
@@ -29,8 +29,8 @@ def handle_onchain_event(event):
         return handle_curve_two_crypto_ng_swap(event)
     elif topic0 == UniswapV2.topic0:
         return handle_uni_cp_swap(event)
-    # elif topic0 == UniswapV3.topic0:
-    #     return handle_uni_v3_swap(event)
+    elif topic0 == UniswapV3.topic0:
+        return handle_uni_v3_swap(event)
     elif topic0 == UniswapV4.topic0:
         return handle_uni_v4_swap(event)
     else:
@@ -111,7 +111,6 @@ def handle_uni_cp_swap(event):
 
 
 # Keeping V3 handler commented out for future reference if needed
-'''
 def handle_uni_v3_swap(event):
     """
     preprocesses Uniswap V3 Swap events
@@ -124,7 +123,7 @@ def handle_uni_v3_swap(event):
     pool_config = UniswapV3.pools[pool_address]
 
     return handle_uni_cl_swap(event, [amount0, amount1], sqrtPriceX96, pool_config)
-'''
+
 
 def handle_uni_v4_swap(event):
     """
