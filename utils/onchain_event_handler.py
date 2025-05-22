@@ -51,8 +51,15 @@ def handle_curve_two_crypto_ng_swap(event):
     tokens_decimals = pool_config["tokens_decimals"]
     is_asf_buy = bought_id == ASF_token_index
 
-    price: float = packed_price_scale / 10**18
-    price = 1 / price if ASF_token_index == 0 else price
+    # Always use the alternative calculation method based on swap amounts
+    # Calculate the adjusted values with decimals
+    token0_value = (tokens_sold if sold_id == 0 else tokens_bought) / 10 ** tokens_decimals[0]
+    token1_value = (tokens_sold if sold_id == 1 else tokens_bought) / 10 ** tokens_decimals[1]
+    
+    # Calculate price as the ratio between token values
+    price = token1_value / token0_value
+    # Adjust based on which token is ASF
+    price = 1 / price if ASF_token_index == 1 else price
 
     return SwapResult(
         txn_hash=event["result"]["transactionHash"],
