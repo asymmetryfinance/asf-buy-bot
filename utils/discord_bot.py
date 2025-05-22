@@ -66,6 +66,6 @@ def format_message(
         f"{round(price, 7):,}" if paired_token == "ETH" else f"{round(price, 2):,}"
     )
     txn_link_str = f"\n[TX](https://etherscan.io/tx/{txn_hash})" if txn_hash else ""
-    emoji_str = "🟢" * max(int(asf_amount * 0.035), 1)
+    emoji_str = "🟢" * max(int(asf_amount * 0.07), 1)
     message = f"**Asymmetry Finance Token Buy!** \n{emoji_str} \n**Spent:** {sold_amount_str} {paired_token} {sold_value_str} \n**Got:** {asf_amount_str} ASF \n**Price:** {price_amount_str} {paired_token} {price_value_str} {txn_link_str}"
     return message
