@@ -23,6 +23,9 @@ install()
 MAINNET_WS_RPC_URL = os.getenv("MAINNET_WS_RPC_URL")
 MAINNET_HTTP_RPC_URL = os.getenv("MAINNET_HTTP_RPC_URL")
 
+# Flag to enable/disable CEX subscription
+ENABLE_CEX_SUBSCRIPTION = False
+
 
 async def onchain_subs():
     async_w3 = AsyncWeb3(WebSocketProvider(MAINNET_WS_RPC_URL))
@@ -87,7 +90,12 @@ async def cex_subs():
 
 
 async def main():
-    await asyncio.gather(onchain_subs(), cex_subs())
+    if ENABLE_CEX_SUBSCRIPTION:
+        # Run both onchain and CEX subscriptions
+        await asyncio.gather(onchain_subs(), cex_subs())
+    else:
+        # Run only onchain subscriptions
+        await onchain_subs()
 
 
 if __name__ == "__main__":
