@@ -26,6 +26,9 @@ MAINNET_HTTP_RPC_URL = os.getenv("MAINNET_HTTP_RPC_URL")
 # Flag to enable/disable CEX subscription
 ENABLE_CEX_SUBSCRIPTION = False
 
+# Minimum dollar value threshold for buy notifications
+MIN_BUY_THRESHOLD_USD = 100
+
 
 async def onchain_subs():
     async_w3 = AsyncWeb3(WebSocketProvider(MAINNET_WS_RPC_URL))
@@ -53,15 +56,24 @@ async def onchain_subs():
                 eth_price = None
                 if swap_result.paired_token == "ETH":
                     eth_price = await get_eth_price(w3)
-
-                await send_message_to_channel(
-                    asf_amount=swap_result.tokens_bought,
-                    sold_amount=swap_result.tokens_sold,
-                    price=swap_result.price,
-                    eth_price=eth_price,
-                    paired_token=swap_result.paired_token,
-                    txn_hash=Web3.to_hex(swap_result.txn_hash),
-                )
+                
+                # Calculate USD value of the transaction
+                usd_value = 0
+                if swap_result.paired_token == "ETH" and eth_price:
+                    usd_value = swap_result.tokens_sold * eth_price
+                elif swap_result.paired_token in ["USDT", "USDC", "DAI"]:
+                    usd_value = swap_result.tokens_sold
+                
+                # Only send notification if the buy is above the threshold
+                if usd_value >= MIN_BUY_THRESHOLD_USD:
+                    await send_message_to_channel(
+                        asf_amount=swap_result.tokens_bought,
+                        sold_amount=swap_result.tokens_sold,
+                        price=swap_result.price,
+                        eth_price=eth_price,
+                        paired_token=swap_result.paired_token,
+                        txn_hash=Web3.to_hex(swap_result.txn_hash),
+                    )
 
 
 async def cex_subs():
@@ -75,14 +87,23 @@ async def cex_subs():
                 if buy_trades:
                     eth_price = await get_eth_price(w3)
                     for trade in buy_trades:
-                        await send_message_to_channel(
-                            asf_amount=trade.asf_amount,
-                            sold_amount=trade.sold_amount,
-                            price=trade.price,
-                            eth_price=eth_price,
-                            paired_token=trade.paired_token,
-                            txn_hash=None,
-                        )
+                        # Calculate USD value of the trade
+                        usd_value = 0
+                        if trade.paired_token == "ETH" and eth_price:
+                            usd_value = trade.sold_amount * eth_price
+                        elif trade.paired_token in ["USDT", "USDC", "DAI"]:
+                            usd_value = trade.sold_amount
+                        
+                        # Only send notification if the buy is above the threshold
+                        if usd_value >= MIN_BUY_THRESHOLD_USD:
+                            await send_message_to_channel(
+                                asf_amount=trade.asf_amount,
+                                sold_amount=trade.sold_amount,
+                                price=trade.price,
+                                eth_price=eth_price,
+                                paired_token=trade.paired_token,
+                                txn_hash=None,
+                            )
 
             except Exception as e:
                 print(f"Error in handle_cex_trades: {e}")
