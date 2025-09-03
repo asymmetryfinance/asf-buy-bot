@@ -29,7 +29,7 @@ BASE_WS_RPC_URL = os.getenv("BASE_WS_RPC_URL")
 ENABLE_CEX_SUBSCRIPTION = False
 
 # Minimum dollar value threshold for buy notifications
-MIN_BUY_THRESHOLD_USD = 100
+MIN_BUY_THRESHOLD_USD = 1
 
 
 async def onchain_subs():
