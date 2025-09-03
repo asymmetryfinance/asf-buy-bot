@@ -5,7 +5,7 @@ from rich import print
 from rich.traceback import install
 from web3 import Web3
 
-from configs import TwoCryptoNG, UniswapV2, UniswapV3, UniswapV4
+from configs import Aero, TwoCryptoNG, UniswapV2, UniswapV3, UniswapV4
 
 install()
 
@@ -31,6 +31,8 @@ def handle_onchain_event(event):
         return handle_uni_v3_swap(event)
     elif topic0 == UniswapV4.topic0:
         return handle_uni_v4_swap(event)
+    elif topic0 == Aero.topic0:
+        return handle_aero_swap(event)
     else:
         return None
 
@@ -49,8 +51,19 @@ def handle_curve_two_crypto_ng_swap(event):
     tokens_decimals = pool_config["tokens_decimals"]
     is_asf_buy = bought_id == ASF_token_index
 
-    price: float = packed_price_scale / 10**18
-    price = 1 / price if ASF_token_index == 0 else price
+    # Always use the alternative calculation method based on swap amounts
+    # Calculate the adjusted values with decimals
+    token0_value = (
+        tokens_sold if sold_id == 0 else tokens_bought
+    ) / 10 ** tokens_decimals[0]
+    token1_value = (
+        tokens_sold if sold_id == 1 else tokens_bought
+    ) / 10 ** tokens_decimals[1]
+
+    # Calculate price as the ratio between token values
+    price = token1_value / token0_value
+    # Adjust based on which token is ASF
+    price = 1 / price if ASF_token_index == 1 else price
 
     return SwapResult(
         txn_hash=event["result"]["transactionHash"],
@@ -72,6 +85,48 @@ def handle_uni_cp_swap(event):
     )
     pool_address = Web3.to_checksum_address(event["result"]["address"])
     pool_config = UniswapV2.pools[pool_address]
+    ASF_token_index = pool_config["ASF_token_index"]
+    tokens_decimals = pool_config["tokens_decimals"]
+
+    is_asf_buy = amount0Out > 0 if ASF_token_index == 0 else amount1Out > 0
+    tokens_bought = max(amount0Out, amount1Out)
+    tokens_bought = (
+        tokens_bought / 10 ** tokens_decimals[0]
+        if amount0Out > 0
+        else tokens_bought / 10 ** tokens_decimals[1]
+    )
+    tokens_sold = max(amount0In, amount1In)
+    tokens_sold = (
+        tokens_sold / 10 ** tokens_decimals[0]
+        if amount0In > 0
+        else tokens_sold / 10 ** tokens_decimals[1]
+    )
+    price = (max(amount1In, amount1Out) / 10 ** tokens_decimals[1]) / (
+        max(amount0In, amount0Out) / 10 ** tokens_decimals[0]
+    )
+    price = 1 / price if ASF_token_index == 1 else price
+
+    return SwapResult(
+        txn_hash=event["result"]["transactionHash"],
+        is_asf_buy=is_asf_buy,
+        tokens_bought=tokens_bought,
+        tokens_sold=tokens_sold,
+        price=price,
+        paired_token=pool_config["paired_token"],
+    )
+
+
+def handle_aero_swap(event):
+    """
+    @dev same logic as handle_uni_cp_swap, may refactor later
+    handles Aero Pools Swap events
+    """
+    amount0In, amount1In, amount0Out, amount1Out = decode(
+        ["uint256", "uint256", "uint256", "uint256"],
+        event["result"]["data"],
+    )
+    pool_address = Web3.to_checksum_address(event["result"]["address"])
+    pool_config = Aero.pools[pool_address]
     ASF_token_index = pool_config["ASF_token_index"]
     tokens_decimals = pool_config["tokens_decimals"]
 

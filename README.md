@@ -18,7 +18,7 @@ You will also need:
 
 - A Discord bot token
 - A Discord channel ID for the bot to send messages to
-- HTTP and Websocket RPC URLs for Ethereum Mainnet
+- HTTP and Websocket RPC URLs for Ethereum Mainnet and Base (WS only)
 
 ## Setup
 
