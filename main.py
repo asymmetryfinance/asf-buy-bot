@@ -146,13 +146,8 @@ async def base_subs():
 
 
 async def main():
-    if ENABLE_CEX_SUBSCRIPTION:
-        # Note: cex_subs() is currently commented out, so this will fail if enabled
-        # Uncomment the cex_subs function above if you want to enable CEX functionality
-        await asyncio.gather(onchain_subs(), base_subs(), cex_subs())
-    else:
-        # Run only onchain and base subscriptions
-        await asyncio.gather(onchain_subs(), base_subs())
+    # CEX functionality is disabled, so only run onchain and base subscriptions
+    await asyncio.gather(onchain_subs(), base_subs())
 
 
 if __name__ == "__main__":
