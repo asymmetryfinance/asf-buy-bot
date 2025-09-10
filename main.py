@@ -11,7 +11,7 @@ from websockets.asyncio.client import connect
 from configs.Aero import filters as aero_filters
 from configs.TwoCryptoNG import filters as two_crypto_ng_filters
 from configs.UniswapV2 import filters as uni_v2_filters
-from configs.UniswapV3 import filters as uni_v3_filters
+# from configs.UniswapV3 import filters as uni_v3_filters
 from configs.UniswapV4 import filters as uni_v4_filters
 
 # from utils.cex_trades_handler import BuyTrade, handle_cex_trades
@@ -25,6 +25,12 @@ install()
 MAINNET_WS_RPC_URL = os.getenv("MAINNET_WS_RPC_URL")
 BASE_WS_RPC_URL = os.getenv("BASE_WS_RPC_URL")
 
+# Flag to enable/disable CEX subscription
+ENABLE_CEX_SUBSCRIPTION = False
+
+# Minimum dollar value threshold for buy notifications
+MIN_BUY_THRESHOLD_USD = 100
+
 
 async def onchain_subs():
     async_w3 = AsyncWeb3(WebSocketProvider(MAINNET_WS_RPC_URL))
@@ -34,7 +40,7 @@ async def onchain_subs():
         print("[green]Monitoring onchain events...")
         subs_tasks = []
         filters = (
-            two_crypto_ng_filters + uni_v2_filters + uni_v3_filters + uni_v4_filters
+            two_crypto_ng_filters + uni_v2_filters + uni_v4_filters
         )
         # Subscribe to log filters as defined in configs files
         for f in filters:
@@ -52,16 +58,25 @@ async def onchain_subs():
                 eth_price = None
                 if swap_result.paired_token == "ETH":
                     eth_price = await get_eth_price()
-
-                await send_message_to_channel(
-                    asf_amount=swap_result.tokens_bought,
-                    sold_amount=swap_result.tokens_sold,
-                    price=swap_result.price,
-                    eth_price=eth_price,
-                    paired_token=swap_result.paired_token,
-                    txn_hash=Web3.to_hex(swap_result.txn_hash),
-                    chain="mainnet",
-                )
+                
+                # Calculate USD value of the transaction
+                usd_value = 0
+                if swap_result.paired_token == "ETH" and eth_price:
+                    usd_value = swap_result.tokens_sold * eth_price
+                elif swap_result.paired_token in ["USDT", "USDC", "DAI"]:
+                    usd_value = swap_result.tokens_sold
+                
+                # Only send notification if the buy is above the threshold
+                if usd_value >= MIN_BUY_THRESHOLD_USD:
+                    await send_message_to_channel(
+                        asf_amount=swap_result.tokens_bought,
+                        sold_amount=swap_result.tokens_sold,
+                        price=swap_result.price,
+                        eth_price=eth_price,
+                        paired_token=swap_result.paired_token,
+                        txn_hash=Web3.to_hex(swap_result.txn_hash),
+                        chain="mainnet",
+                    )
 
 
 async def base_subs():
@@ -131,6 +146,7 @@ async def base_subs():
 
 
 async def main():
+    # CEX functionality is disabled, so only run onchain and base subscriptions
     await asyncio.gather(onchain_subs(), base_subs())
 
 

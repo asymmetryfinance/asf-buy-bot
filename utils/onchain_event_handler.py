@@ -7,6 +7,8 @@ from web3 import Web3
 
 from configs import Aero, TwoCryptoNG, UniswapV2, UniswapV3, UniswapV4
 
+
+
 install()
 
 
@@ -59,7 +61,6 @@ def handle_curve_two_crypto_ng_swap(event):
     token1_value = (
         tokens_sold if sold_id == 1 else tokens_bought
     ) / 10 ** tokens_decimals[1]
-
     # Calculate price as the ratio between token values
     price = token1_value / token0_value
     # Adjust based on which token is ASF
@@ -158,6 +159,7 @@ def handle_aero_swap(event):
     )
 
 
+# Keeping V3 handler commented out for future reference if needed
 def handle_uni_v3_swap(event):
     """
     preprocesses Uniswap V3 Swap events
