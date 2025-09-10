@@ -37,18 +37,15 @@ async def onchain_subs():
     while True:
         try:
             async_w3 = AsyncWeb3(WebSocketProvider(MAINNET_WS_RPC_URL))
-
-            async for w3 in async_w3:
+            
+            async with async_w3 as w3:
                 print(f"w3 is connected to Mainnet: {await w3.is_connected()}")
                 print("[green]Monitoring onchain events...")
-                subs_tasks = []
+                
                 filters = two_crypto_ng_filters + uni_v2_filters + uni_v4_filters
                 # Subscribe to log filters as defined in configs files
                 for f in filters:
-                    task = asyncio.create_task(w3.eth.subscribe("logs", f))
-                    subs_tasks.append(task)
-
-                await asyncio.gather(*subs_tasks)
+                    await w3.eth.subscribe("logs", f)
 
                 async for event in w3.socket.process_subscriptions():
                     try:
@@ -91,19 +88,15 @@ async def base_subs():
     while True:
         try:
             async_w3 = AsyncWeb3(WebSocketProvider(BASE_WS_RPC_URL))
-
-            async for w3 in async_w3:
+            
+            async with async_w3 as w3:
                 print(f"w3 is connected to Base: {await w3.is_connected()}")
                 print("[green]Monitoring onchain events...")
-                subs_tasks = []
+                
                 filters = aero_filters
-
                 # Subscribe to log filters as defined in configs files
                 for f in filters:
-                    task = asyncio.create_task(w3.eth.subscribe("logs", f))
-                    subs_tasks.append(task)
-
-                await asyncio.gather(*subs_tasks)
+                    await w3.eth.subscribe("logs", f)
 
                 async for event in w3.socket.process_subscriptions():
                     try:
