@@ -11,10 +11,10 @@ from websockets.asyncio.client import connect
 from configs.Aero import filters as aero_filters
 from configs.TwoCryptoNG import filters as two_crypto_ng_filters
 from configs.UniswapV2 import filters as uni_v2_filters
+
 # from configs.UniswapV3 import filters as uni_v3_filters
 from configs.UniswapV4 import filters as uni_v4_filters
-
-# from utils.cex_trades_handler import BuyTrade, handle_cex_trades
+from utils.cex_trades_handler import BuyTrade, handle_cex_trades
 from utils.discord_bot import send_message_to_channel
 from utils.eth_oracle import get_eth_price
 from utils.onchain_event_handler import SwapResult, handle_onchain_event
@@ -26,10 +26,11 @@ MAINNET_WS_RPC_URL = os.getenv("MAINNET_WS_RPC_URL")
 BASE_WS_RPC_URL = os.getenv("BASE_WS_RPC_URL")
 
 # Flag to enable/disable CEX subscription
-ENABLE_CEX_SUBSCRIPTION = False
+ENABLE_CEX_SUBSCRIPTION = True
 
 # Minimum dollar value threshold for buy notifications
 MIN_BUY_THRESHOLD_USD = 100
+CEX_MIN_BUY_THRESHOLD_USD = 500
 
 
 async def onchain_subs():
@@ -39,9 +40,7 @@ async def onchain_subs():
         print(f"w3 is connected to Mainnet: {await w3.is_connected()}")
         print("[green]Monitoring onchain events...")
         subs_tasks = []
-        filters = (
-            two_crypto_ng_filters + uni_v2_filters + uni_v4_filters
-        )
+        filters = two_crypto_ng_filters + uni_v2_filters + uni_v4_filters
         # Subscribe to log filters as defined in configs files
         for f in filters:
             task = asyncio.create_task(w3.eth.subscribe("logs", f))
@@ -58,14 +57,14 @@ async def onchain_subs():
                 eth_price = None
                 if swap_result.paired_token == "ETH":
                     eth_price = await get_eth_price()
-                
+
                 # Calculate USD value of the transaction
                 usd_value = 0
                 if swap_result.paired_token == "ETH" and eth_price:
                     usd_value = swap_result.tokens_sold * eth_price
                 elif swap_result.paired_token in ["USDT", "USDC", "DAI"]:
                     usd_value = swap_result.tokens_sold
-                
+
                 # Only send notification if the buy is above the threshold
                 if usd_value >= MIN_BUY_THRESHOLD_USD:
                     await send_message_to_channel(
@@ -120,34 +119,40 @@ async def base_subs():
                 )
 
 
-# async def cex_subs():
-#     w3 = AsyncWeb3(AsyncHTTPProvider(MAINNET_HTTP_RPC_URL))
-#     async with connect("wss://bilaxy.com/stream?symbol=4794") as ws:
-#         while True:
-#             message = await ws.recv()
-#             try:
-#                 message = json.loads(message)
-#                 buy_trades: list[BuyTrade] | None = handle_cex_trades(message)
-#                 if buy_trades:
-#                     eth_price = await get_eth_price(w3)
-#                     for trade in buy_trades:
-#                         await send_message_to_channel(
-#                             asf_amount=trade.asf_amount,
-#                             sold_amount=trade.sold_amount,
-#                             price=trade.price,
-#                             eth_price=eth_price,
-#                             paired_token=trade.paired_token,
-#                             txn_hash=None,
-#                         )
+async def cex_subs():
+    async with connect("wss://bilaxy.com/stream?symbol=4794") as ws:
+        print("Subscribed to CEX events")
+        while True:
+            message = await ws.recv()
+            try:
+                message = json.loads(message)
+                buy_trades: list[BuyTrade] | None = handle_cex_trades(message)
+                if buy_trades:
+                    eth_price = await get_eth_price()
+                    for trade in buy_trades:
+                        # filter out low value trades
+                        if (trade.sold_amount * eth_price) < CEX_MIN_BUY_THRESHOLD_USD:
+                            continue
 
-#             except Exception as e:
-#                 print(f"Error in handle_cex_trades: {e}")
-#                 continue
+                        await send_message_to_channel(
+                            asf_amount=trade.asf_amount,
+                            sold_amount=trade.sold_amount,
+                            price=trade.price,
+                            eth_price=eth_price,
+                            paired_token=trade.paired_token,
+                            txn_hash=None,
+                        )
+
+            except Exception as e:
+                print(f"Error in handle_cex_trades: {e}")
+                continue
 
 
 async def main():
-    # CEX functionality is disabled, so only run onchain and base subscriptions
-    await asyncio.gather(onchain_subs(), base_subs())
+    subs = [onchain_subs(), base_subs()]
+    if ENABLE_CEX_SUBSCRIPTION:
+        subs.append(cex_subs())
+    await asyncio.gather(*subs)
 
 
 if __name__ == "__main__":

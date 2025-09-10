@@ -72,7 +72,9 @@ def format_message(
         explorer_base_url = "https://etherscan.io"
     elif chain == "base":
         explorer_base_url = "https://basescan.org"
-    txn_link_str = f"\n[TX]({explorer_base_url}/tx/{txn_hash})" if txn_hash else ""
+    txn_link_str = (
+        f"\n[TX]({explorer_base_url}/tx/{txn_hash})" if txn_hash else "\nBilaxy"
+    )
     emoji_str = "🟢" * min(max(int(asf_amount * 0.07), 1), 80)
     message = f"**Asymmetry Finance Token Buy!** \n{emoji_str} \n**Spent:** {sold_amount_str} {paired_token} {sold_value_str} \n**Got:** {asf_amount_str} ASF \n**Price:** {price_amount_str} {paired_token} {price_value_str} {txn_link_str}"
     return message
